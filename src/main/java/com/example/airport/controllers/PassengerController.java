@@ -1,16 +1,14 @@
 package com.example.airport.controllers;
 
 import com.example.airport.model.Passenger;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 
 @RestController
 @RequestMapping("api/passengers")
@@ -19,27 +17,14 @@ public class PassengerController {
     private final List<Passenger> passengers;
 
     public PassengerController() {
-        try {
-            String strDate1 = "15.11.2000";
-            DateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
-            Date date1 = formatter.parse(strDate1);
-
-            String strDate2 = "01.01.2001";
-            Date date2 = formatter.parse(strDate2);
-
-            String strDate3 = "05.05.2005";
-            Date date3 = formatter.parse(strDate2);
-
-
-            Passenger u1 = new Passenger(1L, 1111111111L, date1, true);
-            Passenger u2 = new Passenger(2L, 2222222222L, date2, false);
-            Passenger u3 = new Passenger(3L, 3333333333L, date3, false);
-
-            passengers = List.of(u1, u2,u3);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+        passengers = new CopyOnWriteArrayList<>();
+        passengers.addAll(List.of(
+                new Passenger(1L, 1111111111L, true),
+                new Passenger(2L, 2222222222L, false),
+                new Passenger(3L, 3333333333L, false)
+        ));
     }
+
 
     @GetMapping
     public List<Passenger> getPassengers() {
@@ -52,5 +37,32 @@ public class PassengerController {
                 .filter(passenger -> passenger.id().equals(passengerId))
                 .findAny()
                 .orElse(null);
+    }
+
+    @DeleteMapping("/{passenger_id}")
+    public ResponseEntity<List<Passenger>>
+    deletePassenger(@PathVariable("passenger_id") Long passengerId) {
+        passengers.removeIf(passenger -> passenger.id().equals(passengerId));
+        return new ResponseEntity<>(passengers, HttpStatus.OK);
+    }
+
+
+    @PutMapping("/{passenger_id}")
+    public ResponseEntity<List<Passenger>> updatePassenger(
+            @PathVariable("passenger_id") Long passengerId,
+            @RequestBody Passenger updatedPassenger) {
+        Optional<Passenger> optionalPassenger = passengers.stream().filter(passenger -> passenger.id().equals(passengerId)).findAny();
+        if (optionalPassenger.isPresent()) {
+            passengers.replaceAll(passenger -> passenger.id().equals(passengerId) ? updatedPassenger : passenger);
+            return new ResponseEntity<>(passengers, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<List<Passenger>> addPassenger(@RequestBody Passenger newPassenger) {
+        passengers.add(newPassenger);
+        return new ResponseEntity<>(passengers, HttpStatus.OK);
     }
 }
